@@ -128,7 +128,7 @@ iqr <- function(x, alpha = 0.05, max_anoms = 0.2, verbose = FALSE) {
 
 
 
-# 1B. GESD: Generlized Extreme Studentized Deviate Test ----
+# 1B. GESD: Generalized Extreme Studentized Deviate Test ----
 
 #' @export
 #' @rdname anomalize_methods
@@ -136,7 +136,6 @@ gesd <- function(x, alpha = 0.05, max_anoms = 0.2, verbose = FALSE) {
 
   # Variables
   n <- length(x)
-  # r <- floor(n/2)        # by default, set upper bound on number of outliers 'r' to 1/2 sample size
   r <- trunc(n * max_anoms) # use max anoms to limit loop
   R <- numeric(length = r) # test statistics for 'r' outliers
 
@@ -149,14 +148,13 @@ gesd <- function(x, alpha = 0.05, max_anoms = 0.2, verbose = FALSE) {
   mad_new <- numeric(length = r)
 
   # Outlier detection
-  for (i in 1:r) {
+  for (i in seq_len(r)) {
 
     # Compute test statistic
-    # z <- abs(x_new - mean(x_new))/sd(x_new) # Z-scores
     median_new[i] <- median(x_new)
     mad_new[i] <- mad(x_new)
 
-    z <- abs(x_new - median(x_new)) / mad(x_new) # Z-scores
+    z <- abs(x_new - median(x_new)) / (mad(x_new) + .Machine$double.eps) # Z-scores
 
     max_ind <- which(z == max(z), arr.ind = T)[1] # in case of ties, return first one
     R[i] <- z[max_ind] # max Z-score
