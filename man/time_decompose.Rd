@@ -111,7 +111,6 @@ STL: A Seasonal-Trend Decomposition Procedure Based on Loess. Journal of Officia
 Decomposition Methods (Powers \code{time_decompose})
 \itemize{
 \item \code{\link[=decompose_stl]{decompose_stl()}}
-\item \code{\link[=decompose_twitter]{decompose_twitter()}}
 }
 
 Time Series Anomaly Detection Functions (anomaly detection workflow):
