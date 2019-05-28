@@ -89,99 +89,101 @@
 #' @export
 anomalize <- function(data, target, method = c("iqr", "gesd"),
                       alpha = 0.05, max_anoms = 0.20, verbose = FALSE) {
-    UseMethod("anomalize", data)
+  UseMethod("anomalize", data)
 }
 
 #' @export
 anomalize.default <- function(data, target, method = c("iqr", "gesd"),
                               alpha = 0.05, max_anoms = 0.20, verbose = FALSE) {
-    stop("Error anomalize(): Object is not of class `tbl_df` or `tbl_time`.", call. = FALSE)
+  stop("Error anomalize(): Object is not of class `tbl_df` or `tbl_time`.", call. = FALSE)
 }
 
 #' @export
 anomalize.tbl_df <- function(data, target, method = c("iqr", "gesd"),
-                      alpha = 0.05, max_anoms = 0.20, verbose = FALSE) {
+                             alpha = 0.05, max_anoms = 0.20, verbose = FALSE) {
 
-    # Checks
-    if (missing(target)) stop('Error in anomalize(): argument "target" is missing, with no default', call. = FALSE)
+  # Checks
+  if (missing(target)) stop('Error in anomalize(): argument "target" is missing, with no default', call. = FALSE)
 
-    # Setup
-    target_expr <- rlang::enquo(target)
+  # Setup
+  target_expr <- rlang::enquo(target)
 
-    method <- tolower(method[[1]])
-    x      <- data %>% dplyr::pull(!! target_expr)
+  method <- tolower(method[[1]])
+  x <- data %>% dplyr::pull(!!target_expr)
 
-    # Detect Anomalies
-    # method <- tolower(method[[1]])
-    # args   <- list(x         = data %>% dplyr::pull(!! target_expr),
-    #                alpha     = alpha,
-    #                max_anoms = max_anoms,
-    #                verbose   = TRUE)
-    #
-    # outlier_list <- do.call(method, args)
+  # Detect Anomalies
+  # method <- tolower(method[[1]])
+  # args   <- list(x         = data %>% dplyr::pull(!! target_expr),
+  #                alpha     = alpha,
+  #                max_anoms = max_anoms,
+  #                verbose   = TRUE)
+  #
+  # outlier_list <- do.call(method, args)
 
-    # Explicitly call functions
-    if (method == "iqr") {
-        outlier_list <- anomalize::iqr(x         = x,
-                                       alpha     = alpha,
-                                       max_anoms = max_anoms,
-                                       verbose   = TRUE)
-    } else if (method == "gesd") {
-        outlier_list <- anomalize::gesd(x         = x,
-                                        alpha     = alpha,
-                                        max_anoms = max_anoms,
-                                        verbose   = TRUE)
+  # Explicitly call functions
+  if (method == "iqr") {
+    outlier_list <- anomalize::iqr(
+      x = x,
+      alpha = alpha,
+      max_anoms = max_anoms,
+      verbose = TRUE
+    )
+  } else if (method == "gesd") {
+    outlier_list <- anomalize::gesd(
+      x = x,
+      alpha = alpha,
+      max_anoms = max_anoms,
+      verbose = TRUE
+    )
+  } else {
+    stop("The `method` selected is invalid.", call. = FALSE)
+  }
 
-    } else {
-        stop("The `method` selected is invalid.", call. = FALSE)
-    }
+  outlier <- outlier_list$outlier
+  limit_lower <- outlier_list$critical_limits[[1]]
+  limit_upper <- outlier_list$critical_limits[[2]]
 
-    outlier      <- outlier_list$outlier
-    limit_lower  <- outlier_list$critical_limits[[1]]
-    limit_upper  <- outlier_list$critical_limits[[2]]
+  # Returns
+  ret <- data %>%
+    dplyr::mutate(
+      !!paste0(dplyr::quo_name(target_expr), "_l1") := limit_lower,
+      !!paste0(dplyr::quo_name(target_expr), "_l2") := limit_upper
+    ) %>%
+    tibble::add_column(anomaly = outlier)
 
-    # Returns
-    ret <- data %>%
-        dplyr::mutate(!! paste0(dplyr::quo_name(target_expr), "_l1") := limit_lower,
-                      !! paste0(dplyr::quo_name(target_expr), "_l2") := limit_upper) %>%
-        tibble::add_column(anomaly = outlier)
+  if (verbose) {
+    ret <- list(
+      anomalized_tbl = ret,
+      anomaly_details = outlier_list
+    )
 
-    if (verbose) {
-        ret <- list(
-            anomalized_tbl       = ret,
-            anomaly_details      = outlier_list
-        )
-
-        return(ret)
-
-    } else {
-        return(ret)
-    }
-
+    return(ret)
+  } else {
+    return(ret)
+  }
 }
 
 #' @export
 anomalize.grouped_df <- function(data, target, method = c("iqr", "gesd"),
                                  alpha = 0.05, max_anoms = 0.20, verbose = FALSE, ...) {
 
-    # Checks
-    if (missing(target)) stop('Error in anomalize(): argument "target" is missing, with no default', call. = FALSE)
-    if (verbose) warning(glue::glue("Cannot use 'verbose = TRUE' with grouped data."))
+  # Checks
+  if (missing(target)) stop('Error in anomalize(): argument "target" is missing, with no default', call. = FALSE)
+  if (verbose) warning(glue::glue("Cannot use 'verbose = TRUE' with grouped data."))
 
-    # Setup
-    target_expr <- dplyr::enquo(target)
+  # Setup
+  target_expr <- dplyr::enquo(target)
 
-    ret <- data %>%
-        grouped_mapper(
-            .f        = anomalize,
-            target    = !! target_expr,
-            method    = method[[1]],
-            alpha     = alpha,
-            max_anoms = max_anoms,
-            verbose   = F,
-            ...)
+  ret <- data %>%
+    grouped_mapper(
+      .f = anomalize,
+      target = !!target_expr,
+      method = method[[1]],
+      alpha = alpha,
+      max_anoms = max_anoms,
+      verbose = F,
+      ...
+    )
 
-    return(ret)
-
+  return(ret)
 }
-

@@ -83,166 +83,162 @@
 #' @rdname time_frequency
 time_frequency <- function(data, period = "auto", message = TRUE) {
 
-    # Checks
-    if (!is.data.frame(data)) stop("Error time_frequency(): Object must inherit class `data.frame`, `tbl_df` or `tbl_time`.")
+  # Checks
+  if (!is.data.frame(data)) stop("Error time_frequency(): Object must inherit class `data.frame`, `tbl_df` or `tbl_time`.")
 
-    if (dplyr::is.grouped_df(data))
-        stop(glue::glue("Error time_frequency(): Cannot use on a grouped data frame.
+  if (dplyr::is.grouped_df(data)) {
+    stop(glue::glue("Error time_frequency(): Cannot use on a grouped data frame.
                         Frequency should be performed on a single time series."))
+  }
 
-    # Setup inputs
-    template <- get_time_scale_template()
-    data <- prep_tbl_time(data, message = F)
+  # Setup inputs
+  template <- get_time_scale_template()
+  data <- prep_tbl_time(data, message = F)
 
-    index_expr <- data %>% tibbletime::get_index_quo()
-    index_name <- dplyr::quo_name(index_expr)
+  index_expr <- data %>% tibbletime::get_index_quo()
+  index_name <- dplyr::quo_name(index_expr)
 
-    # Get timeseries summary attributes
-    ts_summary <- data %>%
-        tibbletime::get_index_col() %>%
-        timetk::tk_get_timeseries_summary()
+  # Get timeseries summary attributes
+  ts_summary <- data %>%
+    tibbletime::get_index_col() %>%
+    timetk::tk_get_timeseries_summary()
 
-    ts_nobs  <- ts_summary$n.obs
-    ts_scale <- ts_summary$scale
+  ts_nobs <- ts_summary$n.obs
+  ts_scale <- ts_summary$scale
 
 
-    if (is.numeric(period)) {
-        # 1. Numeric Periods
-        freq <- period
+  if (is.numeric(period)) {
+    # 1. Numeric Periods
+    freq <- period
+  } else if (period != "auto") {
+    # 2. Text (e.g. period = "2 Weeks")
+    freq <- data %>%
+      tibbletime::collapse_by(period = period) %>%
+      dplyr::count(!!index_expr) %>%
+      dplyr::pull(n) %>%
+      stats::median(na.rm = T)
+  } else {
+    # 3. period = "auto"
 
-    } else if (period != "auto") {
-        # 2. Text (e.g. period = "2 Weeks")
-        freq <- data %>%
-            tibbletime::collapse_by(period = period) %>%
-            dplyr::count(!! index_expr) %>%
-            dplyr::pull(n) %>%
-            stats::median(na.rm = T)
+    periodicity_target <- template %>%
+      target_time_decomposition_scale(time_scale = ts_scale, target = "frequency", index_shift = 0)
 
-    } else {
-        # 3. period = "auto"
+    freq <- data %>%
+      tibbletime::collapse_by(period = periodicity_target) %>%
+      dplyr::count(!!index_expr) %>%
+      dplyr::pull(n) %>%
+      stats::median(na.rm = T)
 
-        periodicity_target <- template %>%
-            target_time_decomposition_scale(time_scale = ts_scale, target = "frequency", index_shift = 0)
+    # Insufficient observations: nobs-to-freq should be at least 3-1
+    if (ts_nobs < 3 * freq) {
+      periodicity_target <- template %>%
+        target_time_decomposition_scale(time_scale = ts_scale, target = "frequency", index_shift = 1)
 
-        freq <- data %>%
-            tibbletime::collapse_by(period = periodicity_target) %>%
-            dplyr::count(!! index_expr) %>%
-            dplyr::pull(n) %>%
-            stats::median(na.rm = T)
-
-        # Insufficient observations: nobs-to-freq should be at least 3-1
-        if (ts_nobs < 3*freq) {
-            periodicity_target <- template %>%
-                target_time_decomposition_scale(time_scale = ts_scale, target = "frequency", index_shift = 1)
-
-            freq <- data %>%
-                tibbletime::collapse_by(period = periodicity_target) %>%
-                dplyr::count(!! index_expr) %>%
-                dplyr::pull(n) %>%
-                stats::median(na.rm = T)
-        }
-
-        if (ts_nobs < 3*freq) {
-            freq <- 1
-        }
+      freq <- data %>%
+        tibbletime::collapse_by(period = periodicity_target) %>%
+        dplyr::count(!!index_expr) %>%
+        dplyr::pull(n) %>%
+        stats::median(na.rm = T)
     }
 
-    if (message) {
-        freq_string <- glue::glue("frequency = {freq} {ts_scale}s")
-        message(freq_string)
+    if (ts_nobs < 3 * freq) {
+      freq <- 1
     }
+  }
 
-    return(freq)
+  if (message) {
+    freq_string <- glue::glue("frequency = {freq} {ts_scale}s")
+    message(freq_string)
+  }
+
+  return(freq)
 }
 
 #' @export
 #' @rdname time_frequency
 time_trend <- function(data, period = "auto", message = TRUE) {
 
-    # Checks
-    if (!is.data.frame(data)) stop("Error time_trend(): Object must inherit class `data.frame`, `tbl_df` or `tbl_time`.")
+  # Checks
+  if (!is.data.frame(data)) stop("Error time_trend(): Object must inherit class `data.frame`, `tbl_df` or `tbl_time`.")
 
-    if (dplyr::is.grouped_df(data))
-        stop(glue::glue("Cannot use on a grouped data frame.
+  if (dplyr::is.grouped_df(data)) {
+    stop(glue::glue("Cannot use on a grouped data frame.
                         Frequency should be performed on a single time series."))
+  }
 
-    # Setup inputs
-    template <- get_time_scale_template()
-    data <- prep_tbl_time(data, message = F)
+  # Setup inputs
+  template <- get_time_scale_template()
+  data <- prep_tbl_time(data, message = F)
 
-    index_expr <- data %>% tibbletime::get_index_quo()
-    index_name <- dplyr::quo_name(index_expr)
+  index_expr <- data %>% tibbletime::get_index_quo()
+  index_name <- dplyr::quo_name(index_expr)
 
-    # Get timeseries summary attributes
-    ts_summary <- data %>%
-        tibbletime::get_index_col() %>%
-        timetk::tk_get_timeseries_summary()
+  # Get timeseries summary attributes
+  ts_summary <- data %>%
+    tibbletime::get_index_col() %>%
+    timetk::tk_get_timeseries_summary()
 
-    ts_nobs  <- ts_summary$n.obs
-    ts_scale <- ts_summary$scale
+  ts_nobs <- ts_summary$n.obs
+  ts_scale <- ts_summary$scale
 
 
-    if (is.numeric(period)) {
-        # 1. Numeric Periods
-        trend <- period
+  if (is.numeric(period)) {
+    # 1. Numeric Periods
+    trend <- period
+  } else if (period != "auto") {
+    # 2. Text (e.g. period = "2 Weeks")
+    trend <- data %>%
+      tibbletime::collapse_by(period = period) %>%
+      dplyr::count(!!index_expr) %>%
+      dplyr::pull(n) %>%
+      stats::median(na.rm = T)
+  } else {
+    # 3. period = "auto"
 
-    } else if (period != "auto") {
-        # 2. Text (e.g. period = "2 Weeks")
-        trend <- data %>%
-            tibbletime::collapse_by(period = period) %>%
-            dplyr::count(!! index_expr) %>%
-            dplyr::pull(n) %>%
-            stats::median(na.rm = T)
+    periodicity_target <- template %>%
+      target_time_decomposition_scale(time_scale = ts_scale, target = "trend", index_shift = 0)
 
-    } else {
-        # 3. period = "auto"
+    trend <- data %>%
+      tibbletime::collapse_by(period = periodicity_target) %>%
+      dplyr::count(!!index_expr) %>%
+      dplyr::pull(n) %>%
+      stats::median(na.rm = T)
 
-        periodicity_target <- template %>%
-            target_time_decomposition_scale(time_scale = ts_scale, target = "trend", index_shift = 0)
+    # Insufficient observations: nobs-to-trend should be at least 2-1
+    if (ts_nobs / trend < 2) {
+      periodicity_target <- template %>%
+        target_time_decomposition_scale(time_scale = ts_scale, target = "trend", index_shift = 1)
 
-        trend <- data %>%
-            tibbletime::collapse_by(period = periodicity_target) %>%
-            dplyr::count(!! index_expr) %>%
-            dplyr::pull(n) %>%
-            stats::median(na.rm = T)
+      trend <- data %>%
+        tibbletime::collapse_by(period = periodicity_target) %>%
+        dplyr::count(!!index_expr) %>%
+        dplyr::pull(n) %>%
+        stats::median(na.rm = T)
 
-        # Insufficient observations: nobs-to-trend should be at least 2-1
-        if (ts_nobs / trend < 2) {
-            periodicity_target <- template %>%
-                target_time_decomposition_scale(time_scale = ts_scale, target = "trend", index_shift = 1)
-
-            trend <- data %>%
-                tibbletime::collapse_by(period = periodicity_target) %>%
-                dplyr::count(!! index_expr) %>%
-                dplyr::pull(n) %>%
-                stats::median(na.rm = T)
-
-            trend <- ceiling(trend)
-
-        }
-
-        if (ts_nobs / trend < 2) {
-            trend <- ts_nobs
-        }
+      trend <- ceiling(trend)
     }
 
-    if (message) {
-        trend_string <- glue::glue("trend = {trend} {ts_scale}s")
-        message(trend_string)
+    if (ts_nobs / trend < 2) {
+      trend <- ts_nobs
     }
+  }
 
-    return(trend)
+  if (message) {
+    trend_string <- glue::glue("trend = {trend} {ts_scale}s")
+    message(trend_string)
+  }
+
+  return(trend)
 }
 
 # Helper function to get the time decomposition scale
 target_time_decomposition_scale <- function(template, time_scale, target = c("frequency", "trend"), index_shift = 0) {
+  target_expr <- rlang::sym(target[[1]])
 
-    target_expr <-  rlang::sym(target[[1]])
+  idx <- which(template$time_scale == time_scale) - index_shift
+  key_value <- template$time_scale[idx]
 
-    idx <- which(template$time_scale == time_scale) - index_shift
-    key_value <- template$time_scale[idx]
-
-    template %>%
-        dplyr::filter(time_scale == key_value) %>%
-        dplyr::pull(!! target_expr)
+  template %>%
+    dplyr::filter(time_scale == key_value) %>%
+    dplyr::pull(!!target_expr)
 }

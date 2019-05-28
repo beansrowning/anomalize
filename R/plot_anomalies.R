@@ -50,72 +50,71 @@ plot_anomalies <- function(data, time_recomposed = FALSE, ncol = 1,
                            color_no = "#2c3e50", color_yes = "#e31a1c", fill_ribbon = "grey70",
                            alpha_dots = 1, alpha_circles = 1, alpha_ribbon = 1,
                            size_dots = 1.5, size_circles = 4) {
-
-    UseMethod("plot_anomalies", data)
+  UseMethod("plot_anomalies", data)
 }
 
 #' @export
 plot_anomalies.default <- function(data, time_recomposed = FALSE, ncol = 1,
-                                    color_no = "#2c3e50", color_yes = "#e31a1c", fill_ribbon = "grey70",
-                                    alpha_dots = 1, alpha_circles = 1, alpha_ribbon = 1,
-                                    size_dots = 1.5, size_circles = 4) {
-    stop("Object is not of class `tbl_time`.", call. = FALSE)
+                                   color_no = "#2c3e50", color_yes = "#e31a1c", fill_ribbon = "grey70",
+                                   alpha_dots = 1, alpha_circles = 1, alpha_ribbon = 1,
+                                   size_dots = 1.5, size_circles = 4) {
+  stop("Object is not of class `tbl_time`.", call. = FALSE)
 }
 
 #' @export
 plot_anomalies.tbl_time <- function(data, time_recomposed = FALSE, ncol = 1,
-                                   color_no = "#2c3e50", color_yes = "#e31a1c", fill_ribbon = "grey70",
-                                   alpha_dots = 1, alpha_circles = 1, alpha_ribbon = 1,
-                                   size_dots = 1.5, size_circles = 4) {
+                                    color_no = "#2c3e50", color_yes = "#e31a1c", fill_ribbon = "grey70",
+                                    alpha_dots = 1, alpha_circles = 1, alpha_ribbon = 1,
+                                    size_dots = 1.5, size_circles = 4) {
 
-    # Checks
-    column_names <- names(data)
-    check_names  <- c("observed", "anomaly") %in% column_names
-    if (!all(check_names)) stop('Error in plot_anomalies(): key names are missing. Make sure observed:remainder, anomaly, recomposed_l1, and recomposed_l2 are present', call. = FALSE)
+  # Checks
+  column_names <- names(data)
+  check_names <- c("observed", "anomaly") %in% column_names
+  if (!all(check_names)) stop("Error in plot_anomalies(): key names are missing. Make sure observed:remainder, anomaly, recomposed_l1, and recomposed_l2 are present", call. = FALSE)
 
-    # Setup
-    date_expr  <- tibbletime::get_index_quo(data)
-    date_col   <- tibbletime::get_index_char(data)
+  # Setup
+  date_expr <- tibbletime::get_index_quo(data)
+  date_col <- tibbletime::get_index_char(data)
 
-    g <- data %>%
-        ggplot2::ggplot(ggplot2::aes_string(x = date_col, y = "observed"))
+  g <- data %>%
+    ggplot2::ggplot(ggplot2::aes_string(x = date_col, y = "observed"))
 
 
-    if (time_recomposed) {
-        check_names  <- c("recomposed_l1", "recomposed_l2") %in% column_names
-        if (!all(check_names)) stop('Error in plot_anomalies(): key names are missing. Make sure recomposed_l1 and recomposed_l2 are present', call. = FALSE)
-
-        g <- g +
-            ggplot2::geom_ribbon(ggplot2::aes(ymin = recomposed_l1, ymax = recomposed_l2),
-                                 fill = fill_ribbon)
-
-    }
+  if (time_recomposed) {
+    check_names <- c("recomposed_l1", "recomposed_l2") %in% column_names
+    if (!all(check_names)) stop("Error in plot_anomalies(): key names are missing. Make sure recomposed_l1 and recomposed_l2 are present", call. = FALSE)
 
     g <- g +
-        ggplot2::geom_point(ggplot2::aes_string(color = "anomaly"), size = size_dots, alpha = alpha_dots) +
-        ggplot2::geom_point(ggplot2::aes_string(x = date_col, y = "observed", color = "anomaly"),
-                           size = size_circles, shape = 1, alpha = alpha_circles,
-                           data = data %>% dplyr::filter(anomaly == "Yes"), 
-                           inherit.aes = FALSE) +
-        theme_tq() +
-        ggplot2::scale_color_manual(values = c("No" = color_no, "Yes" = color_yes)) +
-        ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
+      ggplot2::geom_ribbon(ggplot2::aes(ymin = recomposed_l1, ymax = recomposed_l2),
+        fill = fill_ribbon
+      )
+  }
+
+  g <- g +
+    ggplot2::geom_point(ggplot2::aes_string(color = "anomaly"), size = size_dots, alpha = alpha_dots) +
+    ggplot2::geom_point(ggplot2::aes_string(x = date_col, y = "observed", color = "anomaly"),
+      size = size_circles, shape = 1, alpha = alpha_circles,
+      data = data %>% dplyr::filter(anomaly == "Yes"),
+      inherit.aes = FALSE
+    ) +
+    theme_tq() +
+    ggplot2::scale_color_manual(values = c("No" = color_no, "Yes" = color_yes)) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 
 
 
 
-    if (dplyr::is.grouped_df(data)) {
+  if (dplyr::is.grouped_df(data)) {
+    facet_group <- dplyr::groups(data) %>%
+      purrr::map(quo_name) %>%
+      unlist() %>%
+      paste0(collapse = " + ")
 
-        facet_group <- dplyr::groups(data) %>%
-            purrr::map(quo_name) %>%
-            unlist() %>%
-            paste0(collapse = " + ")
+    g <- g +
+      ggplot2::facet_wrap(as.formula(paste0(" ~ ", facet_group)),
+        scales = "free_y", ncol = ncol
+      )
+  }
 
-        g <- g +
-            ggplot2::facet_wrap(as.formula(paste0(" ~ ", facet_group)),
-                                scales = "free_y", ncol = ncol)
-    }
-
-    return(g)
-
+  return(g)
 }
