@@ -3,11 +3,11 @@ context("test-time_frequency.R")
 # Setup
 
 tq_dloads <- tidyverse_cran_downloads %>%
-    ungroup() %>%
-    filter(package == "tidyquant")
+    dplyr::ungroup() %>%
+    dplyr::filter(package == "tidyquant")
 
 tq_dloads_small <- tq_dloads %>%
-    slice(1:60)
+    dplyr::slice(1:60)
 
 # Tests
 

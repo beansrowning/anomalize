@@ -15,8 +15,8 @@ test_that("time_recompose works on grouped_tbl_time", {
 
 test_that("time_recompose works on tbl_time", {
     single_recomp <- tidyverse_cran_downloads %>%
-        filter(package == "tidyquant") %>%
-        ungroup() %>%
+        dplyr::filter(package == "tidyquant") %>%
+        dplyr::ungroup() %>%
         time_decompose(count, method = "stl") %>%
         anomalize(remainder, method = "iqr") %>%
         time_recompose()
