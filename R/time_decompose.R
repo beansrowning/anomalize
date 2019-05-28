@@ -99,71 +99,67 @@
 #' @export
 time_decompose <- function(data, target, method = c("stl", "twitter"),
                            frequency = "auto", trend = "auto", ..., merge = FALSE, message = TRUE) {
-    UseMethod("time_decompose", data)
+  UseMethod("time_decompose", data)
 }
 
 #' @export
 time_decompose.default <- function(data, target, method = c("stl", "twitter"),
                                    frequency = "auto", trend = "auto", ..., merge = FALSE, message = TRUE) {
-    stop("Error time_decompose(): Object is not of class `tbl_df` or `tbl_time`.", call. = FALSE)
+  stop("Error time_decompose(): Object is not of class `tbl_df` or `tbl_time`.", call. = FALSE)
 }
 
 #' @export
 time_decompose.tbl_time <- function(data, target, method = c("stl", "twitter"),
                                     frequency = "auto", trend = "auto", ..., merge = FALSE, message = TRUE) {
 
-    # Checks
-    if (missing(target)) stop('Error in time_decompose(): argument "target" is missing, with no default', call. = FALSE)
+  # Checks
+  if (missing(target)) stop('Error in time_decompose(): argument "target" is missing, with no default', call. = FALSE)
+  stopifnot(any(method %in% c("stl", "twitter")))
 
-    # Setup
-    target_expr <- dplyr::enquo(target)
-    method      <- tolower(method[[1]])
+  # Setup
+  target_expr <- dplyr::enquo(target)
+  twitter <- switch(
+    tolower(method[[1]]),
+    twitter = TRUE,
+    stl = FALSE,
+    stop(sprintf("method must be one of `stl` or `twitter`, not %s", method[[1]]))
+  )
 
-    # Set method
-    if (method == "twitter") {
-        decomp_tbl <- data %>%
-            decompose_twitter(!! target_expr, frequency = frequency, trend = trend, message = message, ...)
-    } else if (method == "stl") {
-        decomp_tbl <- data %>%
-            decompose_stl(!! target_expr, frequency = frequency, trend = trend, message = message, ...)
-    # } else if (method == "multiplicative") {
-    #     decomp_tbl <- data %>%
-    #         decompose_multiplicative(!! target_expr, frequency = frequency, message = message, ...)
-    } else {
-        stop(paste0("method = '", method[[1]], "' is not a valid option."))
-    }
+  # Set method
+  decomp_tbl <- data %>%
+    decompose_stl(!!target_expr, twitter = twitter, frequency = frequency, trend = trend, message = message, ...)
 
-    # Merge if desired
-    if (merge) {
-        ret <- merge_two_tibbles(data, decomp_tbl, .f = time_decompose)
-    } else {
-        ret <- decomp_tbl
-    }
+  # Merge if desired
+  if (merge) {
+    ret <- merge_two_tibbles(data, decomp_tbl, .f = time_decompose)
+  } else {
+    ret <- decomp_tbl
+  }
 
-    return(ret)
-
+  return(ret)
 }
 
 #' @export
 time_decompose.tbl_df <- function(data, target, method = c("stl", "twitter"),
                                   frequency = "auto", trend = "auto", ..., merge = FALSE, message = TRUE) {
 
-    # Checks
-    if (missing(target)) stop('Error in time_decompose(): argument "target" is missing, with no default', call. = FALSE)
+  # Checks
+  if (missing(target)) stop('Error in time_decompose(): argument "target" is missing, with no default', call. = FALSE)
 
-    # Prep
-    data <- prep_tbl_time(data, message = message)
+  # Prep
+  data <- prep_tbl_time(data, message = message)
 
-    # Send to time_decompose.tbl_time
-    time_decompose(data      = data,
-                   target    = !! dplyr::enquo(target),
-                   method    = method[[1]],
-                   frequency = frequency,
-                   trend     = trend,
-                   ...       = ...,
-                   merge     = merge,
-                   message   = message)
-
+  # Send to time_decompose.tbl_time
+  time_decompose(
+    data = data,
+    target = !!dplyr::enquo(target),
+    method = method[[1]],
+    frequency = frequency,
+    trend = trend,
+    ... = ...,
+    merge = merge,
+    message = message
+  )
 }
 
 
@@ -173,44 +169,42 @@ time_decompose.tbl_df <- function(data, target, method = c("stl", "twitter"),
 time_decompose.grouped_tbl_time <- function(data, target, method = c("stl", "twitter"),
                                             frequency = "auto", trend = "auto", ..., merge = FALSE, message = FALSE) {
 
-    # Checks
-    if (missing(target)) stop('Error in time_decompose(): argument "target" is missing, with no default', call. = FALSE)
+  # Checks
+  if (missing(target)) stop('Error in time_decompose(): argument "target" is missing, with no default', call. = FALSE)
 
-    # Setup
-    target_expr <- dplyr::enquo(target)
+  # Setup
+  target_expr <- dplyr::enquo(target)
 
-    # Mapping
-    ret <- data %>%
-        grouped_mapper(
-            .f        = time_decompose,
-            target    = !! target_expr,
-            method    = method[[1]],
-            frequency = frequency,
-            trend     = trend,
-            ...       = ...,
-            merge     = merge,
-            message   = message)
+  # Mapping
+  ret <- data %>%
+    grouped_mapper(
+      .f = time_decompose,
+      target = !!target_expr,
+      method = method[[1]],
+      frequency = frequency,
+      trend = trend,
+      ... = ...,
+      merge = merge,
+      message = message
+    )
 
-    return(ret)
-
+  return(ret)
 }
 
 #' @export
 time_decompose.grouped_df <- function(data, target, method = c("stl", "twitter"),
                                       frequency = "auto", trend = "auto", ..., merge = FALSE, message = FALSE) {
+  data <- prep_tbl_time(data, message = message)
 
-    data <- prep_tbl_time(data, message = message)
-
-    # Send to grouped_tbl_time
-    time_decompose(data      = data,
-                   target    = !! dplyr::enquo(target),
-                   method    = method[[1]],
-                   frequency = frequency,
-                   trend     = trend,
-                   ...       = ...,
-                   merge     = merge,
-                   message   = message)
-
+  # Send to grouped_tbl_time
+  time_decompose(
+    data = data,
+    target = !!dplyr::enquo(target),
+    method = method[[1]],
+    frequency = frequency,
+    trend = trend,
+    ... = ...,
+    merge = merge,
+    message = message
+  )
 }
-
-
