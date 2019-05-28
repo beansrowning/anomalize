@@ -1,7 +1,7 @@
 #' Methods that power time_decompose()
 #'
 #' @inheritParams time_decompose
-#'
+#' @param twitter a boolean indicating whether to use Twitter's median spans in the remainder calculation
 #' @return A `tbl_time` object containing the time series decomposition.
 #'
 #' @seealso [time_decompose()]

@@ -2,20 +2,18 @@
 % Please edit documentation in R/time_decompose_methods.R
 \name{decompose_methods}
 \alias{decompose_methods}
-\alias{decompose_twitter}
 \alias{decompose_stl}
 \title{Methods that power time_decompose()}
 \usage{
-decompose_twitter(data, target, frequency = "auto", trend = "auto",
-  message = TRUE)
-
-decompose_stl(data, target, frequency = "auto", trend = "auto",
-  message = TRUE)
+decompose_stl(data, target, twitter = FALSE, frequency = "auto",
+  trend = "auto", message = TRUE)
 }
 \arguments{
 \item{data}{A \code{tibble} or \code{tbl_time} object.}
 
 \item{target}{A column to apply the function to}
+
+\item{twitter}{a boolean indicating whether to use Twitter's median spans in the remainder calculation}
 
 \item{frequency}{Controls the seasonal adjustment (removal of seasonality).
 Input can be either "auto", a time-based definition (e.g. "2 weeks"),
