@@ -35,7 +35,8 @@ Imports:
     rlang,
     tibble,
     tidyr,
-    ggplot2
+    ggplot2,
+    stlplus
 RoxygenNote: 6.0.1
 Roxygen: list(markdown = TRUE)
 Suggests: 
