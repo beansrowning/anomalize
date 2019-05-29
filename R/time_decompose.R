@@ -71,7 +71,6 @@
 #' @seealso
 #' Decomposition Methods (Powers `time_decompose`)
 #' - [decompose_stl()]
-#' - [decompose_twitter()]
 #'
 #' Time Series Anomaly Detection Functions (anomaly detection workflow):
 #' - [anomalize()]
